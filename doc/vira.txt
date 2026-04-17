@@ -45,6 +45,7 @@ Config Variables:~
 - `g:vira_report_width` - Set the width of the report (default 0).
 - `g:vira_issue_limit` - Set the maximum issue limit for query (default 50).
 - `g:vira_null_issue` - Text used when there is no issue.
+- `g:vira_http_timeout` - HTTP timeout in seconds for Jira requests (default 2).
 
 Jira Servers: (REQUIRED)~
 
@@ -73,6 +74,7 @@ For each jira server, the following configuration variables are available:
 - `password_cmd` - Run a CLI password manager such as `pass` or `lpass`.
 - `password` - Enter jira server password in plain text.
 - `skip_cert_verify` - severs with TLS certificates.
+- `http_timeout` - Optional per-server HTTP timeout in seconds (overrides global `g:vira_http_timeout`).
 
 If you can bear to install one additional python pip dependency, `PyYAML`,
 you can configure your settings in yaml: >

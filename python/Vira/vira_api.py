@@ -203,6 +203,11 @@ class ViraAPI():
             self.msg_server_fail()
             raise
 
+        http_timeout = float(vim.eval('g:vira_http_timeout'))
+        server_timeout = self.vira_servers[server].get('http_timeout')
+        if server_timeout is not None:
+            http_timeout = float(server_timeout)
+
         # Connect to jira server
         try:
             if 'https://' not in server.lower():
@@ -217,7 +222,7 @@ class ViraAPI():
                         'verify': cert_verify,
                     },
                     token_auth=token,
-                    timeout=2,
+                    timeout=http_timeout,
                     # async_=True,
                     max_retries=2)
             else:
@@ -227,7 +232,7 @@ class ViraAPI():
                         'verify': cert_verify,
                     },
                     basic_auth=(username, password),
-                    timeout=2,
+                    timeout=http_timeout,
                     # async_=True,
                     max_retries=2)
 

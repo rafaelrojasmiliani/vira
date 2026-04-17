@@ -121,6 +121,8 @@ one of the options `password` or `password_cmd` will be set depending on a
   your life.
 - `skip_cert_verify` - This option can be set in order to connect to a sever
   that is using self-signed TLS certificates.
+- `http_timeout` - Optional per-server HTTP timeout in seconds for connect and
+  read (overrides `g:vira_http_timeout` from your `.vimrc`).
 
 The following is an example of a typical `vira_servers.json` configuration:
 
@@ -128,12 +130,14 @@ The following is an example of a typical `vira_servers.json` configuration:
 {
   "https://n0v1c3.atlassian.net": {
     "username": "travis",
-    "password_cmd": "lpass show --password account"
+    "password_cmd": "lpass show --password account",
+    "http_timeout": 15
   },
   "https://jira.career.com": {
     "username": "mike",
     "password": "SuperSecretPassword",
-    "skip_cert_verify": true
+    "skip_cert_verify": true,
+    "http_timeout": 30
   }
 }
 ```
@@ -145,9 +149,11 @@ https://n0v1c3.atlassian.net:
   username: user1
   password_cmd: lpass show --password account
   skip_cert_verify: true
+  http_timeout: 15
 https://jira.career.com:
   username: user2
   password: SuperSecretPassword
+  http_timeout: 30
 ```
 
 **IMPORTANT:** If only **ONE** the connection is automatic otherwise, a `menu`
@@ -690,6 +696,7 @@ statusline+=%{ViraStatusline()}
   - Lower the number to increase the rate of the initial versions listing.
   - WARNING: A lower number makes it "jumpy" but gets it over and onto `g:vira_async_timer` much faster.
 - `g:vira_highlight` - Text used when there is no issue.
+- `g:vira_http_timeout` - HTTP timeout in seconds for the Jira client (default 2). Per-server `http_timeout` in `vira_servers` overrides this.
 - `g:vira_issue_limit` - Set the maximum issue limit for query (default 50).
 - `g:vira_menu_height` - Set the height of the menu (default 7).
   - Height - `g:vira_menu_height > 0` (may also equal 'J')
