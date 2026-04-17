@@ -143,6 +143,9 @@ Startup Connect (non-blocking):~
 To attempt Jira connection during Vim startup without blocking UI load, use
 `timer_start()` from your |vimrc|. This schedules startup connection after
 Vim is ready, and shows an error if a server connection was not established.
+It also sets the active issue by writing Vira's canonical active-issue
+variable (`g:vira_active_issue`) from the Jira key found in the current branch
+name (for example `VIRA-134/my-change`).
 >
   " Keep startup network waits short (seconds)
   let g:vira_http_timeout = 2
@@ -161,12 +164,26 @@ Vim is ready, and shows an error if a server connection was not established.
         call vira#_msg_error(
               \ 'E901',
               \ 'Could not connect to Jira at startup. Run :ViraServers to retry.')
+        return
       endif
+      call s:vira_set_issue_from_branch()
     catch
       call vira#_msg_error(
             \ 'E902',
             \ 'Startup Jira connect failed unexpectedly. Run :ViraServers to retry.')
     endtry
+  endfunction
+
+  function! s:vira_set_issue_from_branch() abort
+    if !executable('git')
+      return
+    endif
+    let l:branch = trim(system('git branch --show-current 2>/dev/null'))
+    let l:issue = matchstr(l:branch, '\u\+\d*-\d\+')
+    if l:issue !=# ''
+      " Canonical Vira way: set the active issue variable directly.
+      let g:vira_active_issue = l:issue
+    endif
   endfunction
 <
 
