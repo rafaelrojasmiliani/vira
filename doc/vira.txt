@@ -138,6 +138,38 @@ Note: Vira will only load the vira_projects.json/yaml configuration
 automatically once per vim session. You can, however, manually switch servers
 and filters as many times as you want after that. See Usage section.
 
+Startup Connect (non-blocking):~
+
+To attempt Jira connection during Vim startup without blocking UI load, use
+`timer_start()` from your |vimrc|. This schedules startup connection after
+Vim is ready, and shows an error if a server connection was not established.
+>
+  " Keep startup network waits short (seconds)
+  let g:vira_http_timeout = 2
+
+  augroup vira_startup_connect
+    autocmd!
+    autocmd VimEnter * call timer_start(0, { ->
+          \ execute('call <SID>vira_startup_connect()', '') })
+  augroup END
+
+  function! s:vira_startup_connect() abort
+    try
+      " Uses __default__ from vira_projects.json/yaml
+      silent! ViraLoadProject __default__
+      if get(g:, 'vira_serv', '') ==# ''
+        call vira#_msg_error(
+              \ 'E901',
+              \ 'Could not connect to Jira at startup. Run :ViraServers to retry.')
+      endif
+    catch
+      call vira#_msg_error(
+            \ 'E902',
+            \ 'Startup Jira connect failed unexpectedly. Run :ViraServers to retry.')
+    endtry
+  endfunction
+<
+
 Filters:~
 
 Default repo filters can be defined under a `filter` key as such:

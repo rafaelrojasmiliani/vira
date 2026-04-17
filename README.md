@@ -186,6 +186,40 @@ may be required if you are using the Atlassian Cloud service. Create an
 Check out [Menus and Reports](#menus) after that for a list of commands and
 tools that can be mapped to your `.vimrc` like the ones above.
 
+#### Startup connect (non-blocking):
+
+If you want `vira` to try connecting on Vim startup without blocking UI load,
+schedule the connect call with `timer_start()`. The example below loads your
+default project/server on startup, keeps timeout low, and shows a clear error
+message if no server connection was established.
+
+```vim
+" Keep network waits short during startup attempts (seconds)
+let g:vira_http_timeout = 2
+
+augroup vira_startup_connect
+  autocmd!
+  autocmd VimEnter * call timer_start(0, { ->
+        \ execute('call <SID>vira_startup_connect()', '') })
+augroup END
+
+function! s:vira_startup_connect() abort
+  try
+    " Use your default project mapping from vira_projects.json/yaml.
+    silent! ViraLoadProject __default__
+    if get(g:, 'vira_serv', '') ==# ''
+      call vira#_msg_error(
+            \ 'E901',
+            \ 'Could not connect to Jira at startup. Run :ViraServers to retry.')
+    endif
+  catch
+    call vira#_msg_error(
+          \ 'E902',
+          \ 'Startup Jira connect failed unexpectedly. Run :ViraServers to retry.')
+  endtry
+endfunction
+```
+
 <a name="jira_projects"/>
 
 ### Jira project configuration:
