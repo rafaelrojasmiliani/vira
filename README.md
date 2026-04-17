@@ -193,7 +193,10 @@ schedule the connect call with `timer_start()`. The example below loads your
 default project/server on startup, keeps timeout low, and shows a clear error
 message if no server connection was established. It also sets the active issue
 using Vira's canonical variable (`g:vira_active_issue`) by extracting the Jira
-key from the current branch name (for example `VIRA-134/my-change`).
+key from the current branch name (for example `VIRA-134/my-change`). The small
+`s:vira_ensure_jira()` helper in the snippet calls `vira#_connect()` when
+`g:vira_serv` is set so Python has `Vira.api.jira` (for example before
+`:ViraReport`).
 
 ```vim
 " Keep network waits short during startup attempts (seconds)
@@ -204,6 +207,13 @@ augroup vira_startup_connect
   autocmd VimEnter * call timer_start(0, { ->
         \ execute('call <SID>vira_startup_connect()', '') })
 augroup END
+
+function! s:vira_ensure_jira() abort
+  if !exists('g:vira_serv') || g:vira_serv ==# ''
+    return
+  endif
+  call vira#_connect()
+endfunction
 
 function! s:vira_startup_connect() abort
   try
@@ -233,6 +243,7 @@ function! s:vira_set_issue_from_branch() abort
     " Canonical Vira way: set the active issue variable directly.
     let g:vira_active_issue = l:issue
   endif
+  call s:vira_ensure_jira()
 endfunction
 ```
 
@@ -909,6 +920,49 @@ augroup END
 
 This works with fugitive’s normal `:Git commit` / `cc` workflow; you do not need
 a custom wrapper command for the commit itself.
+
+##### Sync active issue from branch (`BufEnter`)
+
+`User FugitiveChanged` fires mainly after `:Git` and similar fugitive actions,
+not whenever HEAD changes outside that path. To keep Vira’s active issue
+aligned with the **git repository of the buffer you are editing** (including
+submodules and worktrees), run the sync on `BufEnter` and use fugitive’s
+`FugitiveGitDir()` / `FugitiveHead()` instead of shelling out to `git` from Vim’s
+cwd.
+
+```vim
+" Omit this if you already copied `s:vira_ensure_jira()` from the startup example.
+function! s:vira_ensure_jira() abort
+  if !exists('g:vira_serv') || g:vira_serv ==# ''
+    return
+  endif
+  call vira#_connect()
+endfunction
+
+function! s:vira_fugitive_sync_issue_from_branch() abort
+  " Skip special buffers (terminal, help, fugitive object buffers, etc.).
+  if &buftype !=# ''
+    return
+  endif
+  if !exists('*FugitiveHead') || empty(FugitiveGitDir())
+    return
+  endif
+  let branch = FugitiveHead()
+  let issue = matchstr(branch, '\u\+\d*-\d\+')
+  if issue ==# ''
+    let g:vira_active_issue = get(g:, 'vira_null_issue', 'None')
+  else
+    " Canonical Vira issue state.
+    let g:vira_active_issue = issue
+  endif
+  call s:vira_ensure_jira()
+endfunction
+
+augroup vira_fugitive_branch_sync
+  autocmd!
+  autocmd BufEnter * call s:vira_fugitive_sync_issue_from_branch()
+augroup END
+```
 
 <a name="GV"/>
 
