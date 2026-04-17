@@ -774,6 +774,92 @@ nnoremap <silent> <leader>vgc :call Vira_GitCommit()<cr>
 nnoremap <silent> <leader>vgi :call Vira_GitActiveIssue()<cr>
 ```
 
+##### Prepending the active issue to the commit message
+
+[vim-fugitive](https://github.com/tpope/vim-fugitive) runs your editor for
+`:Git commit` and for commit maps such as `cc` in the status buffer. After the
+commit message buffer is loaded, fugitive fires the `User FugitiveEditor`
+autocommand (see `:help FugitiveEditor` in fugitive’s help). Hook that event to
+prepend `g:vira_active_issue` to the first line of the message (the subject
+line).
+
+The example below skips prepending when there is no active issue, when the
+buffer is not a `gitcommit` buffer, or when the subject already starts with the
+same text that would be inserted (so amending or reopening does not duplicate
+the key). Adjust `g:vira_null_issue` if you changed it from the default `None`.
+
+You can wrap the issue in square brackets or parentheses by setting
+`g:vira_fugitive_commit_issue_wrap` to `'[]'` or `'()'` before the function is
+called (for example in your `vimrc`). Leave it unset or set it to `''` to use
+the raw issue key with no extra characters. The example uses a dictionary of
+delimiter pairs and `get()` so adding another style is a single map entry.
+
+**Jira summary and description as `#` comments (optional):** Git treats lines
+beginning with `#` in the commit message file as comments: they are shown in
+the editor but **not** included in the recorded commit message (see `git help
+commit`, “commit message” / stripping comments). Set
+`g:vira_fugitive_commit_jira_hint` to `1` to insert, directly under the subject
+line, `#` lines loaded from Jira via `Vira.api.get_active_issue_git_comment_lines()`
+(the issue summary on one line, then the description with each line prefixed
+by `# `). That gives the committer a quick reminder of what the active issue is
+about. Requires `+py3eval`, a Jira connection, and plain-text descriptions
+(Atlassian Document Format bodies are skipped with no description lines).
+
+```vim
+" Optional: '' (default), '[]', or '()'
+" let g:vira_fugitive_commit_issue_wrap = '[]'
+" let g:vira_fugitive_commit_jira_hint = 1
+
+function! s:vira_fugitive_prepend_issue() abort
+  if &filetype !=# 'gitcommit' || empty(FugitiveGitDir())
+    return
+  endif
+  let issue = get(g:, 'vira_active_issue', '')
+  let none = get(g:, 'vira_null_issue', 'None')
+  if issue ==# '' || issue ==# none
+    return
+  endif
+  let wrap = get(g:, 'vira_fugitive_commit_issue_wrap', '')
+  let [open, close] = get(
+        \ {
+        \   '[]': ['[', ']'],
+        \   '()': ['(', ')'],
+        \ },
+        \ wrap,
+        \ ['', ''])
+  let token = open . issue . close
+  let line1 = getline(1)
+  let dup_subject = strpart(line1, 0, len(token)) ==# token
+  if !dup_subject
+    if line1 =~# '^\s*$'
+      call setline(1, token)
+    else
+      call setline(1, token . ' ' . line1)
+    endif
+  endif
+  if get(g:, 'vira_fugitive_commit_jira_hint', 0) && has('py3eval')
+    if getline(2) !~# '^# Vira '
+      try
+        let hint_lines = py3eval('Vira.api.get_active_issue_git_comment_lines()')
+      catch
+        let hint_lines = []
+      endtry
+      if type(hint_lines) == v:t_list && !empty(hint_lines)
+        call append(1, hint_lines)
+      endif
+    endif
+  endif
+endfunction
+
+augroup vira_fugitive_commit
+  autocmd!
+  autocmd User FugitiveEditor call s:vira_fugitive_prepend_issue()
+augroup END
+```
+
+This works with fugitive’s normal `:Git commit` / `cc` workflow; you do not need
+a custom wrapper command for the commit itself.
+
 <a name="GV"/>
 
 #### GV:
